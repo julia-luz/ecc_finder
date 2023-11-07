@@ -44,8 +44,11 @@ def run_TideHunter(file_prefix,query_file,output_path, num_threads, max_divergen
             log("INFO", "Overwriting pre-existing file: " +output_path +file_prefix+".cons.fa")
             TH_params = " -c "+ str(num_copies)
             TH_params += " -t " + str(num_threads) +" -e " +str(max_divergence) +" -p " + str(min_period_size)+ " -P 1000000 "
-            TH_cmd = "TideHunter"+ TH_params+ str(query_file)+ " -l |awk '/^>/{print \">Consens\" ++i; next}{print}' > "+ output_path +file_prefix+".cons.fa"       
-            subprocess.call(TH_cmd, shell=True) 
+            TH_cmd = "TideHunter"+ TH_params+ str(query_file)+ " -l"
+            TH_cmd2 = "awk '/^>/{print \">Consens\" ++i; next}{print}' > "+ output_path +file_prefix+".cons.fa"
+            sub = "{tide}|{awker}".format(tide=TH_cmd, awker=TH_cmd2)
+            ps = subprocess.Popen(sub,shell=True,stdout=subprocess.PIPE,stderr=subprocess.STDOUT)    
+            output = ps.communicate()[0]
     else:  
         TH_params = " -c "+ str(num_copies)
         TH_params += " -t " + str(num_threads) +" -e " +str(max_divergence) +" -p " + str(min_period_size)+ " -P 1000000 "
@@ -115,8 +118,7 @@ def main():
     parser.add_argument("query", metavar="<query.fq>", nargs='?', default="", type=str, help="query fastq file (uncompressed or bgzipped)")
 
     asm_options = parser.add_argument_group("asm options")   
-    asm_options.add_argument('-t', metavar="INT",type=int, default=get_default_thread(),
-                            help='number of CPU threads for asmping mode')
+    asm_options.add_argument('-t', metavar="INT",type=int, default=get_default_thread(), help='number of CPU threads for asmping mode')
     asm_options.add_argument("--five-prime",metavar="STR", type=str, help="5' adapter sequence (sense strand) [NULL]")
     asm_options.add_argument("--three-prime",metavar="STR", type=str, help="3' adapter sequence (anti-sense strand) [NULL]")
 
@@ -172,7 +174,6 @@ def main():
     #consensus sequences of each tandem repeat for a long read
     log("INFO", "Detecting tandem repeat pattern from long reads")
     if five_prime and three_prime:  
-        print("Adapter sequences are provided")
         five_prime=os.path.abspath(five_prime)
         three_prime=os.path.abspath(three_prime)
         run_TideHunter2(file_prefix,query_file,output_path, num_threads, max_divergence,min_period_size,num_copies,five_prime,three_prime,overwrite_files)
